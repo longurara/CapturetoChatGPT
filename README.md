@@ -10,7 +10,7 @@ Tiện ích Chrome giúp bạn chụp nhanh slide hoặc ảnh rồi gửi thẳ
 - **Tùy chỉnh hành vi**: cấu hình prompt, auto send, auto crop, hiển thị nút máy ảnh… tại trang Options của tiện ích.
 
 ## Cài đặt (Developer mode)
-0. Bấm vào code -> chọn download zip
+0. Bấm vào code -> chọn download zip và giải nén nó ra
 1. Mở `chrome://extensions`.
 2. Bật **Developer mode** (góc trên bên phải).
 3. Chọn **Load unpacked** và trỏ tới thư mục `slide-to-chatgpt`.

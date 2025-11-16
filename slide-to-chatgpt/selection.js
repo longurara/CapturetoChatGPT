@@ -40,7 +40,7 @@
     button.type = "button";
     button.id = "stc-camera-button";
     button.innerHTML = getCameraSvg();
-    button.title = "Ch?p nhanh slide v� g?i sang ChatGPT";
+    button.title = "Ch?p nhanh slide v� g?i sang d?ch v? AI ?? ch?n";
     button.addEventListener("click", onClick);
     document.body.appendChild(button);
     return button;
@@ -50,6 +50,39 @@
     return `
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M9 4.5 7.5 6h-2A2.5 2.5 0 0 0 3 8.5v7A2.5 2.5 0 0 0 5.5 18h13a2.5 2.5 0 0 0 2.5-2.5v-7A2.5 2.5 0 0 0 18.5 6h-2L15 4.5H9Zm3 4.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Zm0 1.8a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z"></path>
+    </svg>
+  `;
+  }
+
+  function createSettingsButton() {
+    const existing = document.getElementById("stc-settings-button");
+    if (existing) {
+      existing.remove();
+    }
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = "stc-settings-button";
+    button.innerHTML = getSettingsSvg();
+    button.title = "Mo cai dat Slide Snapshot";
+    button.addEventListener("click", () => {
+      if (
+        chrome.runtime &&
+        typeof chrome.runtime.openOptionsPage === "function"
+      ) {
+        chrome.runtime.openOptionsPage();
+      } else {
+        chrome.runtime.sendMessage({ type: "open-options-page" });
+      }
+    });
+    document.body.appendChild(button);
+    return button;
+  }
+
+  function getSettingsSvg() {
+    return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 8.4A3.6 3.6 0 1 1 8.4 12 3.61 3.61 0 0 1 12 8.4m6.69 2.27-.73-.12a5.66 5.66 0 0 0-.52-1.23l.44-.59a.93.93 0 0 0-.09-1.21l-.86-.86a.93.93 0 0 0-1.21-.09l-.6.44a5.73 5.73 0 0 0-1.23-.52l-.12-.73A.94.94 0 0 0 12.82 5h-1.64a.94.94 0 0 0-.92.78l-.12.73a5.66 5.66 0 0 0-1.23.52l-.59-.44a.93.93 0 0 0-1.21.09l-.86.86a.93.93 0 0 0-.09 1.21l.44.6a5.73 5.73 0 0 0-.52 1.23l-.73.12a.94.94 0 0 0-.78.92v1.64a.94.94 0 0 0 .78.92l.73.12a5.66 5.66 0 0 0 .52 1.23l-.44.59a.93.93 0 0 0 .09 1.21l.86.86a.93.93 0 0 0 1.21.09l.6-.44a5.73 5.73 0 0 0 1.23.52l.12.73a.94.94 0 0 0 .92.78h1.64a.94.94 0 0 0 .92-.78l.12-.73a5.66 5.66 0 0 0 1.23-.52l.59.44a.93.93 0 0 0 1.21-.09l.86-.86a.93.93 0 0 0 .09-1.21l-.44-.6a5.73 5.73 0 0 0 .52-1.23l.73-.12a.94.94 0 0 0 .78-.92v-1.64a.94.94 0 0 0-.78-.92Z"></path>
     </svg>
   `;
   }
@@ -64,6 +97,7 @@
       toastTimer: null,
       capturing: false,
       cameraButton: null,
+      settingsButton: null,
       keyDownHandler: null,
     };
 
@@ -75,6 +109,21 @@
         startCaptureFlow(state, "button")
       );
     }
+    state.settingsButton = createSettingsButton();
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "sync" || !state.settings) {
+        return;
+      }
+      Object.entries(changes).forEach(([key, change]) => {
+        if (
+          !Object.prototype.hasOwnProperty.call(state.settings, key) ||
+          typeof change?.newValue === "undefined"
+        ) {
+          return;
+        }
+        state.settings[key] = change.newValue;
+      });
+    });
 
     chrome.runtime.onMessage.addListener((message) => {
       if (!message?.type) {
@@ -93,11 +142,27 @@
       if (message.type === "selection-image") {
         copySelectionToClipboard(state, message)
           .then(() => {
-            showToast("Đã sao chép & gửi sang ChatGPT (nếu bật).", 4000);
+            const label = getServiceLabel(state.settings.targetService);
+            const suffix = state.settings.autoSend
+              ? ""
+              : " (chờ bạn bấm Gửi nhé)";
+            showToast(
+              `Đã sao chép ảnh & chuyển sang ${label}${suffix}.`,
+              4000
+            );
             state.capturing = false;
           })
-          .catch(() => {
-            showToast("Không thao tác được ảnh, thử lại nhé.", 4000);
+          .catch((error) => {
+            const service = error?.service || state.settings.targetService;
+            const label = getServiceLabel(service);
+            if (error?.code === "service") {
+              showToast(
+                `Không gửi được sang ${label}, thử mở tab ${label} và dán tay nhé.`,
+                4000
+              );
+            } else {
+              showToast("Không thao tác được ảnh, thử lại nhé.", 4000);
+            }
             state.capturing = false;
           });
         return;
@@ -302,21 +367,36 @@
   }
 
   async function sendImageToTarget(state, dataUrl, source = "capture") {
+    const targetService =
+      (state.settings.targetService || "chatgpt").toLowerCase();
+    let response;
     try {
-      await chrome.runtime.sendMessage({
+      response = await chrome.runtime.sendMessage({
         type: "send-to-service",
-        service: state.settings.targetService || "chatgpt",
+        service: targetService,
         imageDataUrl: dataUrl,
         promptText: state.settings.promptText,
         options: { autoSend: state.settings.autoSend, source },
       });
     } catch (error) {
-        console.warn("Slide Snapshot: unable to push to ChatGPT.", error);
-        showToast("Không gửi được sang ChatGPT, thử dán tay nhé.", 4000);
-      }
+      console.warn("Slide Snapshot: unable to reach background.", error);
+      const serviceError = new Error(error?.message || "send-message");
+      serviceError.code = "service";
+      serviceError.service = targetService;
+      throw serviceError;
     }
 
-    function showToast(message, durationMs = 3000) {
+    if (!response?.ok) {
+      const serviceError = new Error(response?.error || "send-failed");
+      serviceError.code = "service";
+      serviceError.service = response?.service || targetService;
+      throw serviceError;
+    }
+
+    return response;
+  }
+
+function showToast(message, durationMs = 3000) {
   const existing = document.getElementById("stc-toast");
   if (existing) {
     existing.remove();
@@ -334,6 +414,13 @@
   if (durationMs > 0) {
     showToast.timer = window.setTimeout(() => toast.remove(), durationMs);
   }
+}
+
+function getServiceLabel(service) {
+  if ((service || "").toLowerCase() === "gemini") {
+    return "Google Gemini";
+  }
+  return "ChatGPT";
 }
 
 function getCaptureFailedMessage(reason, rawMessage) {

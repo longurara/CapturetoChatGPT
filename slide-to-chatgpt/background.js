@@ -73,6 +73,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case "send-to-service":
       handleServiceSend(message, sendResponse);
       return true;
+    case "open-options-page":
+      if (typeof chrome.runtime.openOptionsPage === "function") {
+        chrome.runtime.openOptionsPage();
+      } else {
+        chrome.tabs.create({
+          url: chrome.runtime.getURL("options.html"),
+        });
+      }
+      break;
     default:
       break;
   }
@@ -133,6 +142,36 @@ function shouldAutoInject(url) {
   return autoInjectPatterns.some((pattern) => pattern.test(url));
 }
 
+async function handleServiceSend(message, sendResponse = () => {}) {
+  const service = (message?.service || "chatgpt").toLowerCase();
+  const payload = {
+    imageDataUrl: message?.imageDataUrl,
+    promptText: message?.promptText,
+    options: message?.options || {}
+  };
+
+  try {
+    if (!payload.imageDataUrl) {
+      throw new Error("Missing image data");
+    }
+
+    if (service === "gemini") {
+      await sendImageToGemini(payload);
+    } else {
+      await sendImageToChatGPT(payload);
+    }
+
+    sendResponse({ ok: true, service });
+  } catch (error) {
+    console.error("Slide Snapshot: unable to deliver image.", error);
+    sendResponse({
+      ok: false,
+      service,
+      error: error?.message || "send-failed"
+    });
+  }
+}
+
 async function handleSelectionCapture(message, tab) {
   try {
     const imageUrl = await captureTabScreenshot(tab);
@@ -169,6 +208,23 @@ async function ensureChatGPTTab(activate = false) {
   return chrome.tabs.create({ url: "https://chatgpt.com/" });
 }
 
+async function ensureGeminiTab(activate = false) {
+  const matchUrls = [
+    "https://gemini.google.com/*",
+    "https://gemini.google.com/app*"
+  ];
+  const existing = await chrome.tabs.query({ url: matchUrls });
+
+  if (existing.length > 0) {
+    if (activate) {
+      await chrome.tabs.update(existing[0].id, { active: true });
+    }
+    return existing[0];
+  }
+
+  return chrome.tabs.create({ url: "https://gemini.google.com/app" });
+}
+
 async function sendImageToChatGPT(payload) {
   if (!payload?.imageDataUrl) {
     throw new Error("Missing image data");
@@ -186,6 +242,30 @@ async function sendImageToChatGPT(payload) {
     func: injectIntoChatGPT,
     args: [payload.imageDataUrl, payload.promptText, payload.options],
   });
+}
+
+async function sendImageToGemini(payload) {
+  if (!payload?.imageDataUrl) {
+    throw new Error("Missing image data");
+  }
+
+  const tab = await ensureGeminiTab(true);
+  if (!tab?.id) {
+    throw new Error("Gemini tab missing");
+  }
+
+  await waitForTabReady(tab.id);
+
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: injectIntoGemini,
+    args: [payload.imageDataUrl, payload.promptText, payload.options],
+  });
+
+  const injectionResult = Array.isArray(results) ? results[0]?.result : null;
+  if (!injectionResult?.success) {
+    throw new Error(injectionResult?.error || "Gemini injection failed");
+  }
 }
 
 function waitForTabReady(tabId) {
@@ -402,5 +482,162 @@ async function injectIntoChatGPT(imageDataUrl, promptText, options = {}) {
 
     host.prepend(banner);
     setTimeout(() => banner.remove(), 5000);
+  }
+}
+
+async function injectIntoGemini(imageDataUrl, promptText, options = {}) {
+  const prompt =
+    promptText || "Hay giai thich bang tieng Viet noi dung trong anh nay.";
+  const autoSend =
+    typeof options.autoSend === "boolean" ? options.autoSend : true;
+
+  function waitForElement(selector, attempts = 15, delayMs = 400) {
+    return new Promise((resolve) => {
+      let tries = 0;
+      const lookup = () => {
+        const element = document.querySelector(selector);
+        if (element || tries >= attempts) {
+          resolve(element);
+          return;
+        }
+        tries += 1;
+        setTimeout(lookup, delayMs);
+      };
+      lookup();
+    });
+  }
+
+  async function waitForFileInput() {
+    const primary = await waitForElement('input[type="file"][accept*="image"]');
+    if (primary) {
+      return primary;
+    }
+    return waitForElement('input[type="file"]');
+  }
+
+  async function ensureFileInput() {
+    let input = await waitForFileInput();
+    if (input) {
+      return input;
+    }
+
+    const triggerSelectors = [
+      'button[aria-label*="Upload"]',
+      'button[aria-label*="Add image"]',
+      'button[aria-label*="Add files"]',
+      'button[aria-label*="T\u1ea3i"]',
+      'button[aria-label*="H\u00ecnh"]',
+      '[aria-label*="Add image"] button'
+    ];
+
+    for (const selector of triggerSelectors) {
+      const trigger = document.querySelector(selector);
+      if (trigger) {
+        trigger.click();
+        input = await waitForFileInput();
+        if (input) {
+          return input;
+        }
+      }
+    }
+    return null;
+  }
+
+  async function attachImage() {
+    try {
+      const response = await fetch(imageDataUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `slide-${Date.now()}.png`, {
+        type: blob.type || "image/png"
+      });
+
+      const input = await ensureFileInput();
+      if (!input) {
+        return false;
+      }
+
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    } catch (error) {
+      console.warn("Slide Snapshot: unable to attach file in Gemini.", error);
+      return false;
+    }
+  }
+
+  async function setPromptText() {
+    const textarea =
+      (await waitForElement("textarea")) ||
+      (await waitForElement('[contenteditable=\"true\"][role=\"textbox\"]')) ||
+      (await waitForElement('[contenteditable=\"true\"]'));
+
+    if (!textarea) {
+      return;
+    }
+
+    if ("value" in textarea) {
+      textarea.value = prompt;
+    } else {
+      textarea.textContent = prompt;
+    }
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    textarea.dispatchEvent(new Event("change", { bubbles: true }));
+    textarea.focus();
+  }
+
+  async function clickSendButton() {
+    const sendButton =
+      (await waitForElement('button[aria-label="Send message"]')) ||
+      (await waitForElement('button[aria-label="Send"]')) ||
+      (await waitForElement('button[data-testid="send-button"]')) ||
+      (await waitForElement('button[type="submit"]'));
+
+    if (!sendButton) {
+      return;
+    }
+
+    sendButton.removeAttribute("disabled");
+    sendButton.click();
+  }
+
+  function postStatusBanner(text) {
+    const host =
+      document.querySelector('[aria-live="polite"]') ||
+      document.querySelector("main") ||
+      document.body;
+
+    if (!host) {
+      return;
+    }
+
+    const existing = document.getElementById("slide-snapshot-banner");
+    if (existing) {
+      existing.remove();
+    }
+
+    const banner = document.createElement("div");
+    banner.id = "slide-snapshot-banner";
+    banner.textContent = text;
+    banner.style.cssText =
+      "margin:12px auto;padding:10px 16px;border-radius:10px;background:#e0ecff;color:#0f172a;font-family:inherit;font-size:0.9rem;max-width:360px;text-align:center;";
+
+    host.prepend(banner);
+    setTimeout(() => banner.remove(), 5000);
+  }
+
+  const attached = await attachImage();
+  await setPromptText();
+  postStatusBanner(
+    attached
+      ? autoSend
+        ? "Da chuyen sang Google Gemini"
+        : "Anh da tai len Gemini, kiem tra roi bam Gui nhe."
+      : "Khong dinh kem duoc anh vao Gemini, thu tai tay nhe."
+  );
+
+  if (attached && autoSend) {
+    await clickSendButton();
   }
 }

@@ -6,6 +6,25 @@
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
+    <div class="mode-switcher" role="group" aria-label="Ch? ?ng d?ch v? AI">
+      <span class="mode-switcher__label">Mode</span>
+      <button
+        type="button"
+        class="mode-switcher__option is-active"
+        data-mode-option="chatgpt"
+        aria-pressed="true"
+      >
+        ChatGPT
+      </button>
+      <button
+        type="button"
+        class="mode-switcher__option"
+        data-mode-option="gemini"
+        aria-pressed="false"
+      >
+        Gemini
+      </button>
+    </div>
     <main class="options">
       <header>
         <h1>Slide Snapshot to ChatGPT</h1>

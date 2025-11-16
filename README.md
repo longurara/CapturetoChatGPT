@@ -4,42 +4,37 @@ Tiện ích Chrome giúp bạn chụp nhanh slide hoặc ảnh rồi gửi thẳ
 
 ## Tính năng chính
 
-- **Tự nhận diện khung nội dung** trên Google Slides, PowerPoint web, Canva và cả trang preview ảnh của Google Drive.
-- **Copy & gửi vào ChatGPT/Gemini**: ảnh sau khi crop được copy vào clipboard, đồng thời đính kèm vào khung chat với prompt tiếng Việt tùy chỉnh.
-- **Chọn dịch vụ**: tùy chọn giữa ChatGPT hoặc Google Gemini ngay trong phần Options.
-- **Nút máy ảnh nổi** giúp kích hoạt nhanh ngay trong trang bài giảng; có thể bật/tắt.
-- **Tùy chỉnh hành vi**: cấu hình prompt, auto-send, auto-crop… trong trang Options của tiện ích.
+- **Tự nhận diện khung** trên Google Slides, PowerPoint web, Canva và cả trang preview ảnh của Google Drive.
+- **Copy & gửi vào ChatGPT/Gemini**: ảnh sau khi crop được copy vào clipboard và tự đính kèm vào khung chat cùng prompt tiếng Việt.
+- **Chọn dịch vụ**: chuyển giữa ChatGPT hoặc Google Gemini trong trang Options.
+- **Nút máy ảnh nổi** giúp kích hoạt nhanh ngay trên trang; có thể bật/tắt.
+- **Tùy chỉnh hành vi**: cấu hình prompt, auto-send, auto-crop… trực tiếp trong Options.
 
 ## Cài đặt (Developer mode)
-0. Bấm vào code -> chọn download zip và giải nén nó ra
-1. Mở `chrome://extensions`.
-2. Bật **Developer mode**.
-3. Chọn **Load unpacked** và trỏ tới thư mục `slide-to-chatgpt`.
-4. Pin biểu tượng tiện ích nếu muốn truy cập nhanh.
+
+1. Tải mã nguồn (Download ZIP) và giải nén.
+2. Mở `chrome://extensions`.
+3. Bật **Developer mode**.
+4. Chọn **Load unpacked** và trỏ tới thư mục `slide-to-chatgpt`.
+5. Pin biểu tượng tiện ích nếu muốn truy cập nhanh.
 
 ## Cách sử dụng
-<<<<<<< HEAD
 
-1. Mở trang trình chiếu (Google Slides, PowerPoint web, Canva…) hoặc trang xem ảnh trên Google Drive.
-2. Bấm biểu tượng tiện ích hoặc nút máy ảnh nổi.
-3. Tiện ích sẽ auto-crop; nếu không tìm thấy khung sẽ hiển thị overlay để tự kéo chọn.
-4. Sau khi chụp, ảnh được copy vào clipboard, đính kèm vào ChatGPT/Gemini cùng prompt mặc định và có thể auto-send.
-=======
-1. Truy cập trang trình chiếu (Google Slides, PowerPoint web,...) hoặc trang xem ảnh trên Google Drive.
-2. Bấm biểu tượng tiện ích hoặc nút máy ảnh nổi góc dưới bên phải.
-3. Tiện ích sẽ tự cố gắng tìm khung nội dung và chụp ngay; nếu không tìm được sẽ hiển thị overlay để bạn kéo chọn vùng.
+1. Mở trang trình chiếu (Slides/PowerPoint/Canva) hoặc trang xem ảnh Google Drive.
+2. Bấm biểu tượng tiện ích hoặc nút máy ảnh nổi ở góc dưới bên phải.
+3. Tiện ích auto-crop; nếu không tìm thấy khung sẽ hiển thị overlay để bạn kéo chọn.
 4. Sau khi chụp:
    - Ảnh được copy vào clipboard.
-   - Tiện ích mở tab ChatGPT, đính kèm ảnh vào khung chat và điền prompt mặc định.
-   - Nếu bật **Auto send**, tin nhắn sẽ được gửi luôn; nếu không bạn có thể chỉnh sửa trước khi gửi.
->>>>>>> f2d5b2ba493ee61d1f3662cc233750732a137a5f
+   - Tiện ích mở tab dịch vụ đã chọn (ChatGPT hoặc Gemini), đính kèm ảnh và điền prompt mặc định.
+   - Nếu bật **Auto send**, tin nhắn được gửi tự động; nếu không bạn có thể chỉnh sửa trước khi gửi.
+5. Để chọn Gemini hay ChatGPT: mở trang Options (chrome://extensions → Slide Snapshot → Extension options) và chọn **Dịch vụ nhận ảnh** từ dropdown.
 
 ## Ghi chú kỹ thuật
 
-- Sử dụng `chrome.tabs.captureVisibleTab`, nên chỉ chụp phần đang hiển thị.
-- Selector auto-crop được định nghĩa trong `selection.js` (hàm `detectSlideBounds`). Có thể bổ sung selector nếu dùng dịch vụ khác hoặc tắt auto-crop.
+- Sử dụng `chrome.tabs.captureVisibleTab`, chỉ chụp phần đang hiển thị.
+- Selector auto-crop được định nghĩa trong `selection.js` (hàm `detectSlideBounds`). Có thể bổ sung selector mới hoặc tắt auto-crop trong Options.
 - Nếu copy ảnh thất bại, kiểm tra quyền clipboard của trang.
-- Việc upload ảnh vào ChatGPT/Gemini thao tác qua `input[type="file"]`. Nếu giao diện thay đổi, cập nhật hàm tiêm script tương ứng trong `background.js`.
+- Việc upload ảnh vào ChatGPT/Gemini thao tác qua `input[type="file"]`. Nếu giao diện thay đổi, cập nhật các hàm script tương ứng trong `background.js`.
 
 ## Cấu trúc thư mục
 

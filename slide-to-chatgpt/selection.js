@@ -10,6 +10,7 @@
     showCameraButton: true,
     promptText:
       "Hay giai thich bang tieng Viet noi dung trong buc anh bai giang nay. Neu can, huong dan tung buoc thuc hien.",
+    targetService: "chatgpt",
   };
 
   (async function bootstrap() {
@@ -297,18 +298,19 @@
     }
 
     const dataUrl = canvas.toDataURL("image/png");
-    await sendImageToChatGPT(state, dataUrl);
+    await sendImageToTarget(state, dataUrl);
   }
 
-  async function sendImageToChatGPT(state, dataUrl, source = "capture") {
-      try {
-        await chrome.runtime.sendMessage({
-          type: "send-to-chatgpt",
-          imageDataUrl: dataUrl,
-          promptText: state.settings.promptText,
-          options: { autoSend: state.settings.autoSend, source },
-        });
-      } catch (error) {
+  async function sendImageToTarget(state, dataUrl, source = "capture") {
+    try {
+      await chrome.runtime.sendMessage({
+        type: "send-to-service",
+        service: state.settings.targetService || "chatgpt",
+        imageDataUrl: dataUrl,
+        promptText: state.settings.promptText,
+        options: { autoSend: state.settings.autoSend, source },
+      });
+    } catch (error) {
         console.warn("Slide Snapshot: unable to push to ChatGPT.", error);
         showToast("Không gửi được sang ChatGPT, thử dán tay nhé.", 4000);
       }

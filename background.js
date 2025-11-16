@@ -4,12 +4,12 @@ const defaultSettings = {
   showCameraButton: true,
   promptText:
     "Hay giai thich bang tieng Viet noi dung trong buc anh bai giang nay. Neu can, huong dan tung buoc thuc hien.",
-  targetService: "chatgpt",
+  targetService: "chatgpt"
 };
 
 const selectionResources = Object.freeze({
   css: ["selection.css"],
-  scripts: ["selection.js"],
+  scripts: ["selection.js"]
 });
 
 const autoInjectPatterns = [
@@ -20,7 +20,7 @@ const autoInjectPatterns = [
   /https:\/\/.*prezi\.com/i,
   /https:\/\/.*gamma\.app\/docs/i,
   /https:\/\/drive\.google\.com\/file\/d\//i,
-  /https:\/\/drive\.google\.com\/folders\/d\//i,
+  /https:\/\/drive\.google\.com\/folders\/d\//i
 ];
 
 const injectedTabs = new Map();
@@ -52,7 +52,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   try {
     await chrome.tabs.sendMessage(tab.id, {
       type: "start-capture",
-      source: "browser-action",
+      source: "browser-action"
     });
   } catch (error) {
     console.warn("Slide Snapshot: unable to trigger capture.", error);
@@ -113,12 +113,12 @@ async function injectSelectionResources(tabId, url) {
   try {
     await chrome.scripting.insertCSS({
       target: { tabId, frameIds: [0] },
-      files: selectionResources.css,
+      files: selectionResources.css
     });
 
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [0] },
-      files: selectionResources.scripts,
+      files: selectionResources.scripts
     });
 
     if (url) {
@@ -141,7 +141,7 @@ async function handleSelectionCapture(message, tab) {
       type: "selection-image",
       imageUrl,
       bounds: message.bounds,
-      devicePixelRatio: message.devicePixelRatio,
+      devicePixelRatio: message.devicePixelRatio
     });
   } catch (error) {
     console.error("Slide Snapshot: failed to capture tab.", error);
@@ -149,6 +149,18 @@ async function handleSelectionCapture(message, tab) {
       await notifyCaptureFailed(tab.id, error);
     }
   }
+}
+
+function handleServiceSend(message, sendResponse) {
+  const target = (message?.service || "chatgpt").toLowerCase();
+  const handler = target === "gemini" ? sendImageToGemini : sendImageToChatGPT;
+
+  handler(message)
+    .then(() => sendResponse?.({ ok: true }))
+    .catch((error) => {
+      console.error("Slide Snapshot: failed to push payload.", error);
+      sendResponse?.({ ok: false });
+    });
 }
 
 async function openChatGPTTab() {
@@ -169,6 +181,20 @@ async function ensureChatGPTTab(activate = false) {
   return chrome.tabs.create({ url: "https://chatgpt.com/" });
 }
 
+async function ensureGeminiTab(activate = false) {
+  const matchUrls = ["https://gemini.google.com/*"];
+  const existing = await chrome.tabs.query({ url: matchUrls });
+
+  if (existing.length > 0) {
+    if (activate) {
+      await chrome.tabs.update(existing[0].id, { active: true });
+    }
+    return existing[0];
+  }
+
+  return chrome.tabs.create({ url: "https://gemini.google.com/app" });
+}
+
 async function sendImageToChatGPT(payload) {
   if (!payload?.imageDataUrl) {
     throw new Error("Missing image data");
@@ -184,7 +210,26 @@ async function sendImageToChatGPT(payload) {
   await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: injectIntoChatGPT,
-    args: [payload.imageDataUrl, payload.promptText, payload.options],
+    args: [payload.imageDataUrl, payload.promptText, payload.options]
+  });
+}
+
+async function sendImageToGemini(payload) {
+  if (!payload?.imageDataUrl) {
+    throw new Error("Missing image data");
+  }
+
+  const tab = await ensureGeminiTab(true);
+  if (!tab?.id) {
+    throw new Error("Gemini tab missing");
+  }
+
+  await waitForTabReady(tab.id);
+
+  await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: injectIntoGemini,
+    args: [payload.imageDataUrl, payload.promptText, payload.options]
   });
 }
 
@@ -248,16 +293,13 @@ async function notifyCaptureFailed(tabId, error) {
   const payload = {
     type: "capture-failed",
     reason: classifyCaptureError(error?.message),
-    message: error?.message || "",
+    message: error?.message || ""
   };
 
   try {
     await chrome.tabs.sendMessage(tabId, payload);
   } catch (sendError) {
-    console.warn(
-      "Slide Snapshot: unable to notify capture failure.",
-      sendError
-    );
+    console.warn("Slide Snapshot: unable to notify capture failure.", sendError);
   }
 }
 
@@ -314,7 +356,7 @@ async function injectIntoChatGPT(imageDataUrl, promptText, options = {}) {
       const response = await fetch(imageDataUrl);
       const blob = await response.blob();
       const file = new File([blob], `slide-${Date.now()}.png`, {
-        type: blob.type || "image/png",
+        type: blob.type || "image/png"
       });
 
       const input =
@@ -355,7 +397,7 @@ async function injectIntoChatGPT(imageDataUrl, promptText, options = {}) {
   postStatusBanner(
     attached
       ? autoSend
-        ? "Đã chuyển sang chatGPT"
+        ? "Ảnh đã chuyển sang ChatGPT"
         : "Ảnh đã tải lên, kiểm tra rồi gửi nhé."
       : "Không đính kèm được ảnh, thử lại."
   );
@@ -382,6 +424,121 @@ async function injectIntoChatGPT(imageDataUrl, promptText, options = {}) {
     const host =
       document.querySelector('[data-testid="conversation-turns"]') ||
       document.querySelector('[data-testid="chat-view"]') ||
+      document.querySelector("main") ||
+      document.body;
+
+    if (!host) {
+      return;
+    }
+
+    const existing = document.getElementById("slide-snapshot-banner");
+    if (existing) {
+      existing.remove();
+    }
+
+    const banner = document.createElement("div");
+    banner.id = "slide-snapshot-banner";
+    banner.textContent = text;
+    banner.style.cssText =
+      "margin:12px auto;padding:10px 16px;border-radius:10px;background:#e0ecff;color:#0f172a;font-family:inherit;font-size:0.9rem;max-width:360px;text-align:center;";
+
+    host.prepend(banner);
+    setTimeout(() => banner.remove(), 5000);
+  }
+}
+
+async function injectIntoGemini(imageDataUrl, promptText, options = {}) {
+  const prompt =
+    promptText || "Hay giai thich bang tieng Viet noi dung trong anh nay.";
+  const autoSend =
+    typeof options.autoSend === "boolean" ? options.autoSend : true;
+
+  function waitForElement(selector, attempts = 15, delayMs = 400) {
+    return new Promise((resolve) => {
+      let tries = 0;
+      const lookup = () => {
+        const element = document.querySelector(selector);
+        if (element || tries >= attempts) {
+          resolve(element);
+          return;
+        }
+        tries += 1;
+        setTimeout(lookup, delayMs);
+      };
+      lookup();
+    });
+  }
+
+  async function attachImage() {
+    try {
+      const response = await fetch(imageDataUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `slide-${Date.now()}.png`, {
+        type: blob.type || "image/png"
+      });
+
+      const input =
+        (await waitForElement('input[type="file"][accept*="image"]')) ||
+        (await waitForElement('input[type="file"]'));
+
+      if (!input) {
+        return false;
+      }
+
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    } catch (error) {
+      console.warn("Slide Snapshot: unable to attach file on Gemini.", error);
+      return false;
+    }
+  }
+
+  async function setPromptText() {
+    const textarea =
+      (await waitForElement("textarea")) ||
+      (await waitForElement("[contenteditable='true']"));
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.value = prompt;
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    textarea.focus();
+  }
+
+  await setPromptText();
+  const attached = await attachImage();
+  postStatusBanner(
+    attached
+      ? autoSend
+        ? "Ảnh đã chuyển sang Gemini"
+        : "Ảnh đã tải lên, kiểm tra rồi gửi nhé."
+      : "Gemini không nhận được ảnh, thử lại."
+  );
+  if (attached && autoSend) {
+    await clickSendButton();
+  }
+
+  async function clickSendButton() {
+    const sendButton =
+      (await waitForElement('button[aria-label="Send message"]')) ||
+      (await waitForElement('button[data-testid="send-button"]')) ||
+      (await waitForElement('button[type="submit"]'));
+
+    if (!sendButton) {
+      return;
+    }
+    sendButton.removeAttribute("disabled");
+    sendButton.click();
+  }
+
+  function postStatusBanner(text) {
+    const host =
+      document.querySelector('main[role="main"]') ||
       document.querySelector("main") ||
       document.body;
 

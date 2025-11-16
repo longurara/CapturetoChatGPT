@@ -3,7 +3,8 @@ const defaultSettings = {
   autoSend: true,
   showCameraButton: true,
   promptText:
-    "Hay giai thich bang tieng Viet noi dung trong buc anh bai giang nay. Neu can, huong dan tung buoc thuc hien."
+    "Hay giai thich bang tieng Viet noi dung trong buc anh bai giang nay. Neu can, huong dan tung buoc thuc hien.",
+  targetService: "chatgpt"
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -11,7 +12,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     autoCrop: document.getElementById("autoCrop"),
     autoSend: document.getElementById("autoSend"),
     showCameraButton: document.getElementById("showCameraButton"),
-    promptText: document.getElementById("promptText")
+    promptText: document.getElementById("promptText"),
+    targetService: document.getElementById("targetService")
   };
 
   const resetBtn = document.getElementById("reset");
@@ -40,6 +42,8 @@ function applySettingsToForm(controls, settings) {
   controls.autoSend.checked = settings.autoSend;
   controls.showCameraButton.checked = settings.showCameraButton;
   controls.promptText.value = settings.promptText;
+  controls.targetService.value =
+    settings.targetService || defaultSettings.targetService;
 }
 
 function readFormValues(controls) {
@@ -47,7 +51,8 @@ function readFormValues(controls) {
     autoCrop: controls.autoCrop.checked,
     autoSend: controls.autoSend.checked,
     showCameraButton: controls.showCameraButton.checked,
-    promptText: controls.promptText.value.trim() || defaultSettings.promptText
+    promptText: controls.promptText.value.trim() || defaultSettings.promptText,
+    targetService: controls.targetService.value || defaultSettings.targetService
   };
 }
 

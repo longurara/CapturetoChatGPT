@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cài đặt Slide Snapshot</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="options">
+      <header>
+        <h1>Slide Snapshot to ChatGPT</h1>
+        <p>Tinh chỉnh hành vi chụp slide và gửi sang ChatGPT.</p>
+      </header>
+      <section class="card">
+        <label class="toggle">
+          <input type="checkbox" id="autoCrop" />
+          <span>Tự nhận diện khung slide và chụp ngay khi mở tiện ích</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="autoSend" />
+          <span>Tự động gửi prompt + ảnh trong ChatGPT sau khi tải lên</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="showCameraButton" />
+          <span>Hiện nút máy ảnh nổi trong trang trình chiếu</span>
+        </label>
+      </section>
+      <section class="card">
+        <label for="promptText">Prompt mặc định (tiếng Việt):</label>
+        <textarea id="promptText" rows="4"></textarea>
+      </section>
+      <footer>
+        <button id="reset">Khôi phục mặc định</button>
+        <span id="status" role="status"></span>
+      </footer>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

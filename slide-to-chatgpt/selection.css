@@ -1,0 +1,67 @@
+#stc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  cursor: crosshair;
+  user-select: none;
+}
+
+#stc-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+#stc-selection-box {
+  position: fixed;
+  border: 2px solid #4da3ff;
+  background: rgba(77, 163, 255, 0.2);
+  z-index: 2147483647;
+  pointer-events: none;
+}
+
+#stc-toast {
+  position: fixed;
+  bottom: 140px;
+  right: 20px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(14, 104, 255, 0.92);
+  color: #fff;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  z-index: 2147483647;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+#stc-camera-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #0f6bff, #8c4dff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2147483647;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#stc-camera-button:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+}
+
+#stc-camera-button svg {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+  pointer-events: none;
+}

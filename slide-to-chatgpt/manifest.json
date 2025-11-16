@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Slide Snapshot to ChatGPT",
+  "description": "Chụp phần khung trình chiếu và dán nhanh sang ChatGPT để đặt câu hỏi.",
+  "version": "0.1.0",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "clipboardWrite",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://docs.google.com/*",
+    "https://*/*"
+  ],
+  "action": {
+    "default_title": "Chụp khung trình bày gửi ChatGPT"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "options.html"
+}

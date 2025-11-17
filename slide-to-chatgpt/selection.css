@@ -59,9 +59,14 @@
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
 }
 
-#stc-camera-button svg {
+#stc-camera-button svg,
+#stc-camera-button img {
   width: 26px;
   height: 26px;
-  fill: currentColor;
   pointer-events: none;
+  display: block;
+}
+
+#stc-camera-button svg {
+  fill: currentColor;
 }

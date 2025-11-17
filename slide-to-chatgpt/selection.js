@@ -92,7 +92,7 @@
       if (message.type === "selection-image") {
         copySelectionToClipboard(state, message)
           .then(() => {
-            showToast("Đã sao chép & gửi sang ChatGPT (nếu bật).", 4000);
+            showToast("Đã chụp và copy ảnh.", 4000);
             state.capturing = false;
           })
           .catch(() => {
@@ -301,216 +301,210 @@
   }
 
   async function sendImageToChatGPT(state, dataUrl, source = "capture") {
-      try {
-        await chrome.runtime.sendMessage({
-          type: "send-to-chatgpt",
-          imageDataUrl: dataUrl,
-          promptText: state.settings.promptText,
-          options: { autoSend: state.settings.autoSend, source },
-        });
-      } catch (error) {
-        console.warn("Slide Snapshot: unable to push to ChatGPT.", error);
-        showToast("Không gửi được sang ChatGPT, thử dán tay nhé.", 4000);
-      }
-    }
-
-    function showToast(message, durationMs = 3000) {
-  const existing = document.getElementById("stc-toast");
-  if (existing) {
-    existing.remove();
-  }
-
-  const toast = document.createElement("div");
-  toast.id = "stc-toast";
-  toast.textContent = message;
-  document.body.appendChild(toast);
-
-  if (showToast.timer) {
-    clearTimeout(showToast.timer);
-  }
-
-  if (durationMs > 0) {
-    showToast.timer = window.setTimeout(() => toast.remove(), durationMs);
-  }
-}
-
-function getCaptureFailedMessage(reason, rawMessage) {
-  if (reason === "permission") {
-    return "Chrome chưa cho phép chụp tab này, hãy bấm vào icon tiện ích rồi thử lại nhé.";
-  }
-  if (reason === "inactive") {
-    return "Hãy chuyển sang tab trình chiếu rồi gọi lệnh chụp lại nhé.";
-  }
-  if (reason === "busy" || reason === "rate") {
-    return "Chrome đang bận xử lý lần chụp trước, đợi 1-2 giây rồi thử lại nhé.";
-  }
-  if (rawMessage) {
-    return `Không thể chụp màn hình (${rawMessage}), thử lại nhé.`;
-  }
-  return "Không thể chụp màn hình, thử lại nhé.";
-}
-
-function detectSlideBounds() {
-  const selectors = [
-    ".punch-viewer-content .punch-viewer-frame",
-    ".punch-viewer-content .punch-viewer-canvas-holder",
-    ".punch-viewer-content .punch-viewer-container",
-    ".punch-viewer-frame canvas",
-    "div[aria-label='Slide']",
-    "div[aria-label='Trang chiếu']",
-    "div[aria-label='Trang chieu']",
-    "canvas[aria-label='Slide']",
-    "canvas[aria-label='Trang chiếu']",
-    "canvas[aria-label='Trang chieu']",
-    "[data-testid='deck-canvas'] canvas",
-    "[data-test='slide'] canvas",
-    "div[data-officejs='true'] canvas",
-    "div[data-testid='presenter-present-slide']",
-    "section[data-testid='present-canvas']",
-    "svg.punch-viewer-svg-page",
-    "svg.punch-viewer-svg-page image",
-    "svg image[xlink\\:href^='blob:']",
-    "svg image[xlink\\:href*='docs.google.com']",
-    "svg image[href^='blob:']",
-    "svg image[href*='docs.google.com']",
-    "svg image[preserveAspectRatio]",
-    "svg image",
-    "canvas.webgl-content",
-    "div[data-canvas='true']",
-  ];
-
-  const candidates = [];
-  const seenHosts = new WeakSet();
-
-  selectors.forEach((selector) => {
-    let elements;
     try {
-      elements = document.querySelectorAll(selector);
+      await chrome.runtime.sendMessage({
+        type: "send-to-chatgpt",
+        imageDataUrl: dataUrl,
+        promptText: state.settings.promptText,
+        options: { autoSend: state.settings.autoSend, source },
+      });
     } catch (error) {
-      return;
+      console.warn("Slide Snapshot: unable to push to ChatGPT.", error);
+      showToast("Không gửi được sang ChatGPT, thử dán tay nhé.", 4000);
+    }
+  }
+
+  function showToast(message, durationMs = 3000) {
+    const existing = document.getElementById("stc-toast");
+    if (existing) {
+      existing.remove();
     }
 
-    elements.forEach((element) => {
-      const host = getCandidateHost(element);
-      if (!host || seenHosts.has(host) || !isVisible(host)) {
+    const toast = document.createElement("div");
+    toast.id = "stc-toast";
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    if (showToast.timer) {
+      clearTimeout(showToast.timer);
+    }
+
+    if (durationMs > 0) {
+      showToast.timer = window.setTimeout(() => toast.remove(), durationMs);
+    }
+  }
+
+  function getCaptureFailedMessage(reason, rawMessage) {
+    if (reason === "permission") {
+      return "Chrome chưa cho phép chụp tab này, hãy bấm vào icon tiện ích rồi thử lại nhé.";
+    }
+    if (reason === "inactive") {
+      return "Hãy chuyển sang tab trình chiếu rồi gọi lệnh chụp lại nhé.";
+    }
+    if (reason === "busy" || reason === "rate") {
+      return "Chrome đang bận xử lý lần chụp trước, đợi 1-2 giây rồi thử lại nhé.";
+    }
+    if (rawMessage) {
+      return `Không thể chụp màn hình (${rawMessage}), thử lại nhé.`;
+    }
+    return "Không thể chụp màn hình, thử lại nhé.";
+  }
+
+  function detectSlideBounds() {
+    const selectors = [
+      ".punch-viewer-content .punch-viewer-frame",
+      ".punch-viewer-content .punch-viewer-canvas-holder",
+      ".punch-viewer-content .punch-viewer-container",
+      ".punch-viewer-frame canvas",
+      "div[aria-label='Slide']",
+      "div[aria-label='Trang chiếu']",
+      "div[aria-label='Trang chieu']",
+      "canvas[aria-label='Slide']",
+      "canvas[aria-label='Trang chiếu']",
+      "canvas[aria-label='Trang chieu']",
+      "[data-testid='deck-canvas'] canvas",
+      "[data-test='slide'] canvas",
+      "div[data-officejs='true'] canvas",
+      "div[data-testid='presenter-present-slide']",
+      "section[data-testid='present-canvas']",
+      "svg.punch-viewer-svg-page",
+      "svg.punch-viewer-svg-page image",
+      "svg image[xlink\\:href^='blob:']",
+      "svg image[xlink\\:href*='docs.google.com']",
+      "svg image[href^='blob:']",
+      "svg image[href*='docs.google.com']",
+      "svg image[preserveAspectRatio]",
+      "svg image",
+      "canvas.webgl-content",
+      "div[data-canvas='true']",
+    ];
+
+    const candidates = [];
+    const seenHosts = new WeakSet();
+
+    selectors.forEach((selector) => {
+      let elements;
+      try {
+        elements = document.querySelectorAll(selector);
+      } catch (error) {
         return;
       }
 
-      const rect = host.getBoundingClientRect();
-      if (
-        rect.width < 200 ||
-        rect.height < 200 ||
-        !overlapsViewport(rect)
-      ) {
-        return;
-      }
-
-      seenHosts.add(host);
-      candidates.push({ rect });
-    });
-  });
-
-  if (!candidates.length) {
-    document
-      .querySelectorAll("canvas, img, div[role='presentation'], svg, svg image")
-      .forEach((element) => {
+      elements.forEach((element) => {
         const host = getCandidateHost(element);
         if (!host || seenHosts.has(host) || !isVisible(host)) {
           return;
         }
 
         const rect = host.getBoundingClientRect();
-        if (rect.width > 200 && rect.height > 200 && overlapsViewport(rect)) {
-          seenHosts.add(host);
-          candidates.push({ rect });
+        if (rect.width < 200 || rect.height < 200 || !overlapsViewport(rect)) {
+          return;
         }
+
+        seenHosts.add(host);
+        candidates.push({ rect });
       });
+    });
+
+    if (!candidates.length) {
+      document
+        .querySelectorAll(
+          "canvas, img, div[role='presentation'], svg, svg image"
+        )
+        .forEach((element) => {
+          const host = getCandidateHost(element);
+          if (!host || seenHosts.has(host) || !isVisible(host)) {
+            return;
+          }
+
+          const rect = host.getBoundingClientRect();
+          if (rect.width > 200 && rect.height > 200 && overlapsViewport(rect)) {
+            seenHosts.add(host);
+            candidates.push({ rect });
+          }
+        });
+    }
+
+    if (!candidates.length) {
+      return null;
+    }
+
+    const scored = candidates
+      .map(({ rect }) => ({
+        rect,
+        score: computeScore(rect),
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    const best = scored[0];
+    if (!best) {
+      return null;
+    }
+
+    const padding = 8;
+    return normalizeBounds(best.rect, padding);
   }
 
-  if (!candidates.length) {
-    return null;
+  function computeScore(rect) {
+    const area = rect.width * rect.height;
+    const ratio = rect.width / rect.height;
+    const ratios = [16 / 9, 4 / 3, 3 / 2];
+    const ratioBoost =
+      1 / (1 + Math.min(...ratios.map((target) => Math.abs(ratio - target))));
+
+    const horizontalCenterBoost =
+      1 /
+      (1 + Math.abs(rect.left + rect.width / 2 - window.innerWidth / 2) / 250);
+
+    const verticalCenterBoost =
+      1 /
+      (1 + Math.abs(rect.top + rect.height / 2 - window.innerHeight / 2) / 250);
+
+    return area * ratioBoost * horizontalCenterBoost * verticalCenterBoost;
   }
 
-  const scored = candidates
-    .map(({ rect }) => ({
-      rect,
-      score: computeScore(rect),
-    }))
-    .sort((a, b) => b.score - a.score);
+  function normalizeBounds(rect, padding = 0) {
+    const x = clamp(rect.left + padding, 0, window.innerWidth);
+    const y = clamp(rect.top + padding, 0, window.innerHeight);
+    const width = clamp(rect.right - padding - x, 1, window.innerWidth - x);
+    const height = clamp(rect.bottom - padding - y, 1, window.innerHeight - y);
 
-  const best = scored[0];
-  if (!best) {
-    return null;
+    return { x, y, width, height };
   }
 
-  const padding = 8;
-  return normalizeBounds(best.rect, padding);
-}
-
-function computeScore(rect) {
-  const area = rect.width * rect.height;
-  const ratio = rect.width / rect.height;
-  const ratios = [16 / 9, 4 / 3, 3 / 2];
-  const ratioBoost =
-    1 / (1 + Math.min(...ratios.map((target) => Math.abs(ratio - target))));
-
-  const horizontalCenterBoost =
-    1 /
-    (1 + Math.abs(rect.left + rect.width / 2 - window.innerWidth / 2) / 250);
-
-  const verticalCenterBoost =
-    1 /
-    (1 + Math.abs(rect.top + rect.height / 2 - window.innerHeight / 2) / 250);
-
-  return area * ratioBoost * horizontalCenterBoost * verticalCenterBoost;
-}
-
-function normalizeBounds(rect, padding = 0) {
-  const x = clamp(rect.left + padding, 0, window.innerWidth);
-  const y = clamp(rect.top + padding, 0, window.innerHeight);
-  const width = clamp(rect.right - padding - x, 1, window.innerWidth - x);
-  const height = clamp(
-    rect.bottom - padding - y,
-    1,
-    window.innerHeight - y
-  );
-
-  return { x, y, width, height };
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function isVisible(element) {
-  const style = window.getComputedStyle(element);
-  if (style.visibility === "hidden" || style.display === "none") {
-    return false;
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
   }
-  const rect = element.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
-}
 
-function overlapsViewport(rect, minOverlap = 120) {
-  const horizontalOverlap = Math.max(
-    0,
-    Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0)
-  );
-  const verticalOverlap = Math.max(
-    0,
-    Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)
-  );
-  return horizontalOverlap > minOverlap && verticalOverlap > minOverlap;
-}
+  function isVisible(element) {
+    const style = window.getComputedStyle(element);
+    if (style.visibility === "hidden" || style.display === "none") {
+      return false;
+    }
+    const rect = element.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
 
-function getCandidateHost(element) {
-  if (!element) {
-    return null;
+  function overlapsViewport(rect, minOverlap = 120) {
+    const horizontalOverlap = Math.max(
+      0,
+      Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0)
+    );
+    const verticalOverlap = Math.max(
+      0,
+      Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)
+    );
+    return horizontalOverlap > minOverlap && verticalOverlap > minOverlap;
   }
-  const tagName = element.tagName ? element.tagName.toLowerCase() : "";
-  if (tagName === "image" && element.ownerSVGElement) {
-    return element.ownerSVGElement;
+
+  function getCandidateHost(element) {
+    if (!element) {
+      return null;
+    }
+    const tagName = element.tagName ? element.tagName.toLowerCase() : "";
+    if (tagName === "image" && element.ownerSVGElement) {
+      return element.ownerSVGElement;
+    }
+    return element;
   }
-  return element;
-}
 })();

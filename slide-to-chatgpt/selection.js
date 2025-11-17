@@ -72,7 +72,10 @@
       ) {
         chrome.runtime.openOptionsPage();
       } else {
-        chrome.runtime.sendMessage({ type: "open-options-page" });
+        runtimeSendMessage({ type: "open-options-page" }).catch((error) => {
+          console.warn("Slide Snapshot: cannot open options.", error);
+          showToast("Tien ich dang tai tu?i l?i, tai lai trang nhe.", 3000);
+        });
       }
     });
     document.body.appendChild(button);
@@ -155,13 +158,18 @@
           .catch((error) => {
             const service = error?.service || state.settings.targetService;
             const label = getServiceLabel(service);
-            if (error?.code === "service") {
+            if (error?.code === "context") {
               showToast(
-                `Không gửi được sang ${label}, thử mở tab ${label} và dán tay nhé.`,
+                "Tien ich vua duoc cap nhat, tai lai trang roi thu lai nhe.",
+                4000
+              );
+            } else if (error?.code === "service") {
+              showToast(
+                `Khong gui duoc sang ${label}, thu mo tab ${label} va dan tay nhe.`,
                 4000
               );
             } else {
-              showToast("Không thao tác được ảnh, thử lại nhé.", 4000);
+              showToast("Khong thao tac duoc anh, thu lai nhe.", 4000);
             }
             state.capturing = false;
           });
@@ -185,7 +193,7 @@
       const autoBounds = detectSlideBounds();
       if (autoBounds) {
         showToast("Đang tự căn khung slide và chụp...", 0);
-        requestCapture(autoBounds);
+        requestCapture(state, autoBounds);
         return;
       }
     }
@@ -199,11 +207,15 @@
     createOverlay(state);
   }
 
-  function requestCapture(bounds) {
-    chrome.runtime.sendMessage({
+  function requestCapture(state, bounds) {
+    runtimeSendMessage({
       type: "capture-selection",
       bounds,
       devicePixelRatio: window.devicePixelRatio || 1,
+    }).catch((error) => {
+      console.warn("Slide Snapshot: cannot request capture.", error);
+      showToast("Tien ich dang tai tu?i l?i, tai lai trang nhe.", 3000);
+      state.capturing = false;
     });
   }
 
@@ -291,7 +303,7 @@
 
     cleanupOverlay(state);
     showToast("Đang chụp & xử lý ảnh...", 0);
-    requestCapture(bounds);
+    requestCapture(state, bounds);
   }
 
   function onKeyDown(state, event) {
@@ -371,13 +383,17 @@
       (state.settings.targetService || "chatgpt").toLowerCase();
     let response;
     try {
-      response = await chrome.runtime.sendMessage({
-        type: "send-to-service",
-        service: targetService,
-        imageDataUrl: dataUrl,
-        promptText: state.settings.promptText,
-        options: { autoSend: state.settings.autoSend, source },
-      });
+      response = await withTimeout(
+        runtimeSendMessage({
+          type: "send-to-service",
+          service: targetService,
+          imageDataUrl: dataUrl,
+          promptText: state.settings.promptText,
+          options: { autoSend: state.settings.autoSend, source },
+        }),
+        15000,
+        targetService
+      );
     } catch (error) {
       console.warn("Slide Snapshot: unable to reach background.", error);
       const serviceError = new Error(error?.message || "send-message");
@@ -421,6 +437,84 @@ function getServiceLabel(service) {
     return "Google Gemini";
   }
   return "ChatGPT";
+}
+
+function withTimeout(promise, ms, service) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    const timer = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      const error = new Error("service-timeout");
+      error.code = "service";
+      error.service = service;
+      settled = true;
+      reject(error);
+    }, ms);
+
+    promise
+      .then((value) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+function runtimeSendMessage(payload) {
+  if (!chrome.runtime || !chrome.runtime.id) {
+    return Promise.reject(createContextError());
+  }
+  return new Promise((resolve, reject) => {
+    try {
+      chrome.runtime.sendMessage(payload, (response) => {
+        const error = chrome.runtime.lastError;
+        if (error) {
+          if (isContextError(error)) {
+            reject(createContextError(error));
+          } else {
+            reject(error);
+          }
+          return;
+        }
+        resolve(response);
+      });
+    } catch (error) {
+      if (isContextError(error)) {
+        reject(createContextError(error));
+      } else {
+        reject(error);
+      }
+    }
+  });
+}
+
+function isContextError(error) {
+  return (
+    error?.message?.includes("Extension context invalidated") ||
+    error?.message?.includes("context invalidated")
+  );
+}
+
+function createContextError(originalError) {
+  const error = new Error(
+    originalError?.message || "extension-context-invalidated"
+  );
+  error.code = "context";
+  return error;
 }
 
 function getCaptureFailedMessage(reason, rawMessage) {

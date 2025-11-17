@@ -6,29 +6,10 @@
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
-    <div class="mode-switcher" role="group" aria-label="Chế độ dịch vụ AI">
-      <span class="mode-switcher__label">Mode</span>
-      <button
-        type="button"
-        class="mode-switcher__option is-active"
-        data-mode-option="chatgpt"
-        aria-pressed="true"
-      >
-        ChatGPT
-      </button>
-      <button
-        type="button"
-        class="mode-switcher__option"
-        data-mode-option="gemini"
-        aria-pressed="false"
-      >
-        Gemini
-      </button>
-    </div>
     <main class="options">
       <header>
         <h1>Slide Snapshot to ChatGPT</h1>
-        <p>Tinh chỉnh hành vi chụp slide và gửi sang ChatGPT/Gemini.</p>
+        <p>Tinh chỉnh hành vi chụp slide và gửi sang ChatGPT.</p>
       </header>
       <section class="card">
         <label class="toggle">
@@ -37,19 +18,12 @@
         </label>
         <label class="toggle">
           <input type="checkbox" id="autoSend" />
-          <span>Tự động gửi prompt + ảnh trong dịch vụ đã chọn sau khi tải lên</span>
+          <span>Tự động gửi prompt + ảnh trong ChatGPT sau khi tải lên</span>
         </label>
         <label class="toggle">
           <input type="checkbox" id="showCameraButton" />
           <span>Hiện nút máy ảnh nổi trong trang trình chiếu</span>
         </label>
-      </section>
-      <section class="card">
-        <label for="targetService">Dịch vụ nhận ảnh:</label>
-        <select id="targetService">
-          <option value="chatgpt">ChatGPT</option>
-          <option value="gemini">Google Gemini</option>
-        </select>
       </section>
       <section class="card">
         <label for="promptText">Prompt mặc định (tiếng Việt):</label>

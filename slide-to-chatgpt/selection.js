@@ -10,7 +10,6 @@
     showCameraButton: true,
     promptText:
       "Hay giai thich bang tieng Viet noi dung trong buc anh bai giang nay. Neu can, huong dan tung buoc thuc hien.",
-    targetService: "chatgpt",
   };
 
   (async function bootstrap() {
@@ -40,7 +39,7 @@
     button.type = "button";
     button.id = "stc-camera-button";
     button.innerHTML = getCameraSvg();
-    button.title = "Ch?p nhanh slide v� g?i sang d?ch v? AI ?? ch?n";
+    button.title = "Ch?p nhanh slide v� g?i sang ChatGPT";
     button.addEventListener("click", onClick);
     document.body.appendChild(button);
     return button;
@@ -50,42 +49,6 @@
     return `
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M9 4.5 7.5 6h-2A2.5 2.5 0 0 0 3 8.5v7A2.5 2.5 0 0 0 5.5 18h13a2.5 2.5 0 0 0 2.5-2.5v-7A2.5 2.5 0 0 0 18.5 6h-2L15 4.5H9Zm3 4.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Zm0 1.8a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z"></path>
-    </svg>
-  `;
-  }
-
-  function createSettingsButton() {
-    const existing = document.getElementById("stc-settings-button");
-    if (existing) {
-      existing.remove();
-    }
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.id = "stc-settings-button";
-    button.innerHTML = getSettingsSvg();
-    button.title = "Mo cai dat Slide Snapshot";
-    button.addEventListener("click", () => {
-      if (
-        chrome.runtime &&
-        typeof chrome.runtime.openOptionsPage === "function"
-      ) {
-        chrome.runtime.openOptionsPage();
-      } else {
-        runtimeSendMessage({ type: "open-options-page" }).catch((error) => {
-          console.warn("Slide Snapshot: cannot open options.", error);
-          showToast("Tien ich dang tai tu?i l?i, tai lai trang nhe.", 3000);
-        });
-      }
-    });
-    document.body.appendChild(button);
-    return button;
-  }
-
-  function getSettingsSvg() {
-    return `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 8.4A3.6 3.6 0 1 1 8.4 12 3.61 3.61 0 0 1 12 8.4m6.69 2.27-.73-.12a5.66 5.66 0 0 0-.52-1.23l.44-.59a.93.93 0 0 0-.09-1.21l-.86-.86a.93.93 0 0 0-1.21-.09l-.6.44a5.73 5.73 0 0 0-1.23-.52l-.12-.73A.94.94 0 0 0 12.82 5h-1.64a.94.94 0 0 0-.92.78l-.12.73a5.66 5.66 0 0 0-1.23.52l-.59-.44a.93.93 0 0 0-1.21.09l-.86.86a.93.93 0 0 0-.09 1.21l.44.6a5.73 5.73 0 0 0-.52 1.23l-.73.12a.94.94 0 0 0-.78.92v1.64a.94.94 0 0 0 .78.92l.73.12a5.66 5.66 0 0 0 .52 1.23l-.44.59a.93.93 0 0 0 .09 1.21l.86.86a.93.93 0 0 0 1.21.09l.6-.44a5.73 5.73 0 0 0 1.23.52l.12.73a.94.94 0 0 0 .92.78h1.64a.94.94 0 0 0 .92-.78l.12-.73a5.66 5.66 0 0 0 1.23-.52l.59.44a.93.93 0 0 0 1.21-.09l.86-.86a.93.93 0 0 0 .09-1.21l-.44-.6a5.73 5.73 0 0 0 .52-1.23l.73-.12a.94.94 0 0 0 .78-.92v-1.64a.94.94 0 0 0-.78-.92Z"></path>
     </svg>
   `;
   }
@@ -100,7 +63,6 @@
       toastTimer: null,
       capturing: false,
       cameraButton: null,
-      settingsButton: null,
       keyDownHandler: null,
     };
 
@@ -112,21 +74,6 @@
         startCaptureFlow(state, "button")
       );
     }
-    state.settingsButton = createSettingsButton();
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName !== "sync" || !state.settings) {
-        return;
-      }
-      Object.entries(changes).forEach(([key, change]) => {
-        if (
-          !Object.prototype.hasOwnProperty.call(state.settings, key) ||
-          typeof change?.newValue === "undefined"
-        ) {
-          return;
-        }
-        state.settings[key] = change.newValue;
-      });
-    });
 
     chrome.runtime.onMessage.addListener((message) => {
       if (!message?.type) {
@@ -145,32 +92,11 @@
       if (message.type === "selection-image") {
         copySelectionToClipboard(state, message)
           .then(() => {
-            const label = getServiceLabel(state.settings.targetService);
-            const suffix = state.settings.autoSend
-              ? ""
-              : " (chờ bạn bấm Gửi nhé)";
-            showToast(
-              `Đã sao chép ảnh & chuyển sang ${label}${suffix}.`,
-              4000
-            );
+            showToast("Đã sao chép & gửi sang ChatGPT (nếu bật).", 4000);
             state.capturing = false;
           })
-          .catch((error) => {
-            const service = error?.service || state.settings.targetService;
-            const label = getServiceLabel(service);
-            if (error?.code === "context") {
-              showToast(
-                "Tien ich vua duoc cap nhat, tai lai trang roi thu lai nhe.",
-                4000
-              );
-            } else if (error?.code === "service") {
-              showToast(
-                `Khong gui duoc sang ${label}, thu mo tab ${label} va dan tay nhe.`,
-                4000
-              );
-            } else {
-              showToast("Khong thao tac duoc anh, thu lai nhe.", 4000);
-            }
+          .catch(() => {
+            showToast("Không thao tác được ảnh, thử lại nhé.", 4000);
             state.capturing = false;
           });
         return;
@@ -193,7 +119,7 @@
       const autoBounds = detectSlideBounds();
       if (autoBounds) {
         showToast("Đang tự căn khung slide và chụp...", 0);
-        requestCapture(state, autoBounds);
+        requestCapture(autoBounds);
         return;
       }
     }
@@ -207,15 +133,11 @@
     createOverlay(state);
   }
 
-  function requestCapture(state, bounds) {
-    runtimeSendMessage({
+  function requestCapture(bounds) {
+    chrome.runtime.sendMessage({
       type: "capture-selection",
       bounds,
       devicePixelRatio: window.devicePixelRatio || 1,
-    }).catch((error) => {
-      console.warn("Slide Snapshot: cannot request capture.", error);
-      showToast("Tien ich dang tai tu?i l?i, tai lai trang nhe.", 3000);
-      state.capturing = false;
     });
   }
 
@@ -303,7 +225,7 @@
 
     cleanupOverlay(state);
     showToast("Đang chụp & xử lý ảnh...", 0);
-    requestCapture(state, bounds);
+    requestCapture(bounds);
   }
 
   function onKeyDown(state, event) {
@@ -375,44 +297,24 @@
     }
 
     const dataUrl = canvas.toDataURL("image/png");
-    await sendImageToTarget(state, dataUrl);
+    await sendImageToChatGPT(state, dataUrl);
   }
 
-  async function sendImageToTarget(state, dataUrl, source = "capture") {
-    const targetService =
-      (state.settings.targetService || "chatgpt").toLowerCase();
-    let response;
-    try {
-      response = await withTimeout(
-        runtimeSendMessage({
-          type: "send-to-service",
-          service: targetService,
+  async function sendImageToChatGPT(state, dataUrl, source = "capture") {
+      try {
+        await chrome.runtime.sendMessage({
+          type: "send-to-chatgpt",
           imageDataUrl: dataUrl,
           promptText: state.settings.promptText,
           options: { autoSend: state.settings.autoSend, source },
-        }),
-        15000,
-        targetService
-      );
-    } catch (error) {
-      console.warn("Slide Snapshot: unable to reach background.", error);
-      const serviceError = new Error(error?.message || "send-message");
-      serviceError.code = "service";
-      serviceError.service = targetService;
-      throw serviceError;
+        });
+      } catch (error) {
+        console.warn("Slide Snapshot: unable to push to ChatGPT.", error);
+        showToast("Không gửi được sang ChatGPT, thử dán tay nhé.", 4000);
+      }
     }
 
-    if (!response?.ok) {
-      const serviceError = new Error(response?.error || "send-failed");
-      serviceError.code = "service";
-      serviceError.service = response?.service || targetService;
-      throw serviceError;
-    }
-
-    return response;
-  }
-
-function showToast(message, durationMs = 3000) {
+    function showToast(message, durationMs = 3000) {
   const existing = document.getElementById("stc-toast");
   if (existing) {
     existing.remove();
@@ -430,91 +332,6 @@ function showToast(message, durationMs = 3000) {
   if (durationMs > 0) {
     showToast.timer = window.setTimeout(() => toast.remove(), durationMs);
   }
-}
-
-function getServiceLabel(service) {
-  if ((service || "").toLowerCase() === "gemini") {
-    return "Google Gemini";
-  }
-  return "ChatGPT";
-}
-
-function withTimeout(promise, ms, service) {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-
-    const timer = setTimeout(() => {
-      if (settled) {
-        return;
-      }
-      const error = new Error("service-timeout");
-      error.code = "service";
-      error.service = service;
-      settled = true;
-      reject(error);
-    }, ms);
-
-    promise
-      .then((value) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        clearTimeout(timer);
-        resolve(value);
-      })
-      .catch((error) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        clearTimeout(timer);
-        reject(error);
-      });
-  });
-}
-
-function runtimeSendMessage(payload) {
-  if (!chrome.runtime || !chrome.runtime.id) {
-    return Promise.reject(createContextError());
-  }
-  return new Promise((resolve, reject) => {
-    try {
-      chrome.runtime.sendMessage(payload, (response) => {
-        const error = chrome.runtime.lastError;
-        if (error) {
-          if (isContextError(error)) {
-            reject(createContextError(error));
-          } else {
-            reject(error);
-          }
-          return;
-        }
-        resolve(response);
-      });
-    } catch (error) {
-      if (isContextError(error)) {
-        reject(createContextError(error));
-      } else {
-        reject(error);
-      }
-    }
-  });
-}
-
-function isContextError(error) {
-  return (
-    error?.message?.includes("Extension context invalidated") ||
-    error?.message?.includes("context invalidated")
-  );
-}
-
-function createContextError(originalError) {
-  const error = new Error(
-    originalError?.message || "extension-context-invalidated"
-  );
-  error.code = "context";
-  return error;
 }
 
 function getCaptureFailedMessage(reason, rawMessage) {
@@ -560,8 +377,6 @@ function detectSlideBounds() {
     "svg image",
     "canvas.webgl-content",
     "div[data-canvas='true']",
-    "img.a-b-ta-Ua",
-    "div[jscontroller='ox8G5'] img",
   ];
 
   const candidates = [];

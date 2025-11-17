@@ -65,34 +65,3 @@
   fill: currentColor;
   pointer-events: none;
 }
-
-#stc-settings-button {
-  position: fixed;
-  bottom: 90px;
-  right: 28px;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  border: none;
-  background: rgba(15, 23, 42, 0.92);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 2147483647;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-}
-
-#stc-settings-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-}
-
-#stc-settings-button svg {
-  width: 22px;
-  height: 22px;
-  fill: currentColor;
-  pointer-events: none;
-}

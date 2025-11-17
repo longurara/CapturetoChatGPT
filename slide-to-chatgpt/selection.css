@@ -23,7 +23,7 @@
 
 #stc-toast {
   position: fixed;
-  bottom: 140px;
+  top: 20px;
   right: 20px;
   padding: 10px 14px;
   border-radius: 8px;
